@@ -13,6 +13,7 @@ pub struct Request<'a> {
     #[serde(rename = "msgtype")]
     kind: MessageType,
     text: Option<TextMessage<'a>>,
+    markdown: Option<MarkdownMessage<'a>>,
 }
 
 #[derive(Serialize, Debug)]
@@ -21,7 +22,12 @@ pub struct TextMessage<'a> {
 }
 
 #[derive(Serialize, Debug)]
-#[serde(rename_all = "lowercase")]
+pub struct MarkdownMessage<'a> {
+    content: &'a str,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "snake_case")]
 enum MessageType {
     Text,
     Markdown,
@@ -29,7 +35,12 @@ enum MessageType {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]
-struct Response {}
+struct Response {
+    #[serde(rename = "errcode")]
+    code: u32,
+    #[serde(rename = "errmsg")]
+    msg: String,
+}
 
 const WECOM_WEBHOOK_URL: &'static str = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send";
 
@@ -40,27 +51,42 @@ pub fn new(key: &str) -> Client {
     }
 }
 
+use crate::error;
 impl Client<'_> {
     pub async fn notify<'a>(&self, body: &Request<'a>) -> Result<()> {
         let params = [("key", &self.key)];
-        let res = self
+        let res: Response = self
             .client
             .post(WECOM_WEBHOOK_URL)
             .header("User-Agent", "wecom-rs")
             .query(&params)
             .json(body)
             .send()
+            .await?
+            .json()
             .await?;
         println!("wx: {:?}", res);
-        Ok(())
+        if res.code == 0 {
+            Ok(())
+        } else {
+            Err(error::Error::WC(res.msg))
+        }
     }
 
     pub async fn notify_text(&self, text: &str) -> Result<()> {
-        let request = Request {
+        self.notify(&Request {
             kind: MessageType::Text,
             text: Some(TextMessage { content: text }),
-        };
-        let _res = self.notify(&request).await?;
-        Ok(())
+            markdown: None,
+        })
+        .await
+    }
+    pub async fn notify_markdown(&self, md: &str) -> Result<()> {
+        self.notify(&Request {
+            kind: MessageType::Markdown,
+            markdown: Some(MarkdownMessage { content: md }),
+            text: None,
+        })
+        .await
     }
 }
