@@ -3,7 +3,17 @@ name = "wecom"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license-file = "LICENSE"
+
+description = "Asnyc Client for WeCom"
+homepage = "https://github.com/zwpaper/wecom"
+documentation = "https://github.com/zwpaper/wecom"
+repository = "https://github.com/zwpaper/wecom"
+readme = "README.md"
+
+keywords = ["wecom", "async", "client"]
+categories = ["accessibility", "asynchronous", "api-bindings"]
+
 
 [dependencies]
 thiserror = "1.0"
